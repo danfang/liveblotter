@@ -20,20 +20,15 @@ var server = http.createServer(function(request, response) {
 
 server.isReady = false;
 server.clients = [];
-server.crimes = {};
-server.newCrimes = {};
+server.crimes = [];
+server.newCrimes = [];
 
 server.start = function(port, debug) {
     server.listen(port, function() {
         logger.info((new Date()) + ' Websocket server is listening on port ' + port);
         request(url + '25', function (err, res, body) {
             if (!err && res.statusCode == 200) {
-                var rawCrimes = JSON.parse(body);
-
-                for (index in rawCrimes) {
-                    server.crimes[rawCrimes[index].event_clearance_date] = rawCrimes[index];
-                }
-
+                server.crimes = JSON.parse(body);
                 server.isReady = true;
                 logger.info('Websocket server is updated and ready.');
             }
@@ -58,9 +53,8 @@ wsServer.on('connect', function(connection) {
             var content = message.utf8Data;
 
             if (content === 'debug') {
-                for (date in server.crimes) {
-                    console.log(date);
-                    console.log(server.crimes[date].event_clearance_description);
+                for (index in server.crimes) {
+                    console.log(server.crimes[index].event_clearance_description);
                 }
             }
         }
@@ -68,7 +62,7 @@ wsServer.on('connect', function(connection) {
     });
 
     connection.on('close', function(reasonCode, description) {
-        logger.info('---\n' + (new Date()) + ' Peer ' + connection.remoteAddress + 
+        logger.info('Peer ' + connection.remoteAddress + 
             ' disconnected.');
 
         var index = server.clients.indexOf(connection);
@@ -83,7 +77,6 @@ wsServer.on('connect', function(connection) {
 var interval = 60 * 1000;
 
 setInterval(function() {
-    console.log('Server ready: ' + server.isReady);
     if (server.isReady) {
         console.log('Refreshing crime data (interval = ' + interval + ')');
         fetchAndPushNewCrimes();
@@ -96,18 +89,25 @@ var fetchAndPushNewCrimes = function() {
             var fetchedCrimes = JSON.parse(body);
             console.log('Fetched ' + fetchedCrimes.length + ' recent crimes');
             var hasNew = false;
-            var newCrimes = {};
             var numNewCrimes = 0;
+            var newCrimes = []
 
-            for (index in fetchedCrimes) {
-                var date = fetchedCrimes[index].event_clearance_date;
+            for (i in fetchedCrimes) {
+                var newCrime = fetchedCrimes[i];
+                var isNew = true;
 
-                if (!server.crimes.hasOwnProperty(date)) {
-                    server.crimes[date] = fetchedCrimes[index];
+                for (j in server.crimes) {
+                    if (crimesEqual(server.crimes[j], newCrime)) {
+                        isNew = false;
+                   }
+                }
+
+                if (isNew) {
+                    server.crimes.splice(i, 0, newCrime);
                     removeOldest();
                     hasNew = true;
                     numNewCrimes++;
-                    newCrimes[date] = fetchedCrimes[index];
+                    newCrimes.push(newCrime);
                 }
             }
 
@@ -120,6 +120,16 @@ var fetchAndPushNewCrimes = function() {
     });
 };
 
+var crimesEqual = function(crime1, crime2) {
+    var equal = true;
+    for (key in crime1) {
+        if (!crime2.hasOwnProperty(key) || (crime2[key] !== crime1[key] && typeof crime1[key] !== 'object')) {
+            equal = false;
+        }
+    }
+    return equal;
+}
+
 var pushUpdates = function() {
     console.log('Pushing new crimes to clients: ');
     for (index in server.clients) {
@@ -130,18 +140,7 @@ var pushUpdates = function() {
 }
 
 var removeOldest = function() {
-    var foundFirst = false;
-    var min = 0;
-    for (date in server.crimes) {
-        if (!foundFirst || Date.parse(date) < Date.parse(min)) {
-            min = date;
-            foundFirst = true;
-        } 
-    }
-    if (min != 0) {
-        console.log('Removed ' + min + ' from the log');
-        delete server.crimes[min];
-    }
+    server.crimes = server.crimes.splice(server.crimes.length - 1, 1);
 }
 
 exports.server = server;
