@@ -1,0 +1,25 @@
+{
+  "name": "liveblotter",
+  "version": "1.0.0",
+  "description": "Real-time crime feed using Socrata Open Data  ",
+  "main": "services.js",
+  "dependencies": {
+    "request": "^2.51.0",
+    "websocket": "^1.0.17",
+    "winston": "^0.8.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node services.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danfang/liveblotter.git"
+  },
+  "author": "Daniel Fang",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/danfang/liveblotter/issues"
+  },
+  "homepage": "https://github.com/danfang/liveblotter"
+}

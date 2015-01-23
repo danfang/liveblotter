@@ -121,9 +121,10 @@ var fetchAndPushNewCrimes = function() {
 };
 
 var pushUpdates = function() {
-    console.log('Pushing new crimes to clients.');
+    console.log('Pushing new crimes to clients: ');
     for (index in server.clients) {
         var connection = server.clients[index];
+        console.log('Pushed to ' + connection.remoteAddress);
         connection.sendUTF(JSON.stringify(server.newCrimes));
     }
 }
@@ -132,8 +133,9 @@ var removeOldest = function() {
     var foundFirst = false;
     var min = 0;
     for (date in server.crimes) {
-        if (!foundFirst || offenseNumber < min) {
+        if (!foundFirst || Date.parse(date) < Date.parse(min)) {
             min = date;
+            foundFirst = true;
         } 
     }
     if (min != 0) {
