@@ -45,8 +45,10 @@ wsServer.on('connect', function(connection) {
     logger.info('Connected to ' + connection.remoteAddress);
 
     if (server.isReady) {
-        connection.sendUTF(JSON.stringify(server.crimes));
+        connection.sendUTF(JSON.stringify({existing: server.crimes}));
     }
+
+    server.clients.push(connection);
 
     connection.on('message', function(message) {
         if (message.type === 'utf8') {
@@ -58,7 +60,6 @@ wsServer.on('connect', function(connection) {
                 }
             }
         }
-        server.clients.push(connection);
     });
 
     connection.on('close', function(reasonCode, description) {
@@ -68,7 +69,7 @@ wsServer.on('connect', function(connection) {
         var index = server.clients.indexOf(connection);
 
         if (index != -1) {
-            server.clients = server.clients.splice(index, 1);
+            server.clients.splice(index, 1);
         }
 
     });
@@ -101,10 +102,8 @@ var fetchAndPushNewCrimes = function() {
                         isNew = false;
                    }
                 }
-
                 if (isNew) {
-                    server.crimes.splice(i, 0, newCrime);
-                    removeOldest();
+                    console.log('NEW: ' + newCrime.event_clearance_description);
                     hasNew = true;
                     numNewCrimes++;
                     newCrimes.push(newCrime);
@@ -114,6 +113,14 @@ var fetchAndPushNewCrimes = function() {
             if (hasNew) {
                 console.log(numNewCrimes + ' new crimes found.');
                 server.newCrimes = newCrimes;
+
+                // remove the last (numNewCrimes) crimes from the array
+                server.crimes.splice(server.crimes.length - numNewCrimes, numNewCrimes);
+
+                // add the newest crimes
+                for (i in newCrimes) {
+                    server.crimes.splice(i, 0, newCrimes[i]);
+                }
                 pushUpdates();
             }
         }
@@ -135,12 +142,8 @@ var pushUpdates = function() {
     for (index in server.clients) {
         var connection = server.clients[index];
         console.log('Pushed to ' + connection.remoteAddress);
-        connection.sendUTF(JSON.stringify(server.newCrimes));
+        connection.sendUTF(JSON.stringify({new: server.newCrimes}));
     }
-}
-
-var removeOldest = function() {
-    server.crimes = server.crimes.splice(server.crimes.length - 1, 1);
 }
 
 exports.server = server;
