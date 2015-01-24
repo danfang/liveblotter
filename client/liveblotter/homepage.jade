@@ -1,9 +1,14 @@
 doctype html
 
 html(lang="en")
-	head
-		include includes/head
-	body
-		#map
-		#feed
-	script(src="js/homepage.js")
+    head
+        include includes/head
+    body
+        #title-bar
+            h1 Seattle Live Blotter
+        #content-container.row
+            #map.col-md-8
+            #feed.col-md-4
+        section#credits
+            p Created by Daniel Fang &copy; 2015
+    script(src="js/homepage.js")
