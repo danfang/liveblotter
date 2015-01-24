@@ -5,7 +5,7 @@ var WebSocketServer = require('websocket').server;
 
 var POLL_INTERVAL = 60 * 1000;
 
-var url = 'https://data.seattle.gov/resource/3k2p-39jp.json?$where=event_clearance_date%20IS%20NOT%20NULL&$order=event_clearance_date%20DESC&$limit=25'
+var urlBase = 'https://data.seattle.gov/resource/';
 
 // Logging utilities to console and log files
 var logger = new (winston.Logger)({
@@ -22,31 +22,56 @@ var server = http.createServer(function(request, response) {
     response.end();
 });
 
-server.isReady = false;
-server.clients = [];
-server.crimes = [];
-server.newCrimes = [];
+server.crimes = {
+    URL: urlBase + '3k2p-39jp.json?$where=event_clearance_date%20IS%20NOT%20NULL&$order=event_clearance_date%20DESC&$limit=25',
+    isReady: false,
+    clients: [],
+    data: [],
+    latest: []
+};
+
+server.fires = {
+    URL: urlBase + 'kzjm-xkqj.json?$where=datetime%20IS%20NOT%20NULL&%24order=datetime%20desc&$limit=25',
+    isReady: false,
+    clients: [],
+    data: [],
+    latest: []
+}
+
+var loadData = function(type) {
+    var service = server[type];
+
+    request(service.URL, function (err, res, body) {
+        if (!err && res.statusCode == 200) {
+            var data = JSON.parse(body);
+            service.isReady = true;
+            logger.info(type + ': updated and ready');
+
+            if (type === 'crimes') {
+                for (i in data) {
+                    sanitizeCrimeEvent(data[i]);
+                }
+            }
+
+            service.data = data;
+
+            // start polling for new events
+            setInterval(function() {
+                if (server[type].isReady) {
+                    fetchAndPush(type);
+                }
+            }, POLL_INTERVAL);
+        }
+    });
+}
 
 server.start = function(port, debug) {
     server.listen(port, function() {
         logger.info('Websocket server is listening on port ' + port);
         logger.info('Updates set to refresh every ' + POLL_INTERVAL / 1000 + ' secs');
 
-        // contact the Seattle Open Data API for latest updates
-        request(url, function (err, res, body) {
-            if (!err && res.statusCode == 200) {
-                server.crimes = JSON.parse(body);
-                server.isReady = true;
-                logger.info('Websocket server is updated and ready');
-
-                // start polling for new police events
-                setInterval(function() {
-                    if (server.isReady) {
-                        fetchAndPushNewCrimes();
-                    }
-                }, POLL_INTERVAL);
-            }
-        });
+        loadData('fires');
+        loadData('crimes');
     });
 };
 
@@ -60,21 +85,44 @@ wsServer = new WebSocketServer({
 wsServer.on('connect', function(connection) {
     logger.info('Connected to ' + connection.remoteAddress);
 
-    if (server.isReady) {
-        connection.sendUTF(JSON.stringify({existing: server.crimes}));
-        server.clients.push(connection);
-    }
+    connection.on('message', function(message) {
+        if (message.type === 'utf8') {
+
+            var message = message.utf8Data;
+            logger.info('Received message: ' + message);
+
+            if (message === 'crimes' || message === 'fires') {
+                var type = message;
+                connection.sendUTF(JSON.stringify({
+                    service: type,
+                    new: false,
+                    data: server[type].data
+                }));
+
+                server[type].clients.push(connection);
+
+                if (type === 'crimes') {
+                    removeClient('fires', connection);
+                } else {
+                    removeClient('crimes', connection);
+                }
+            }
+        }
+    });
 
     connection.on('close', function(reasonCode, description) {
         logger.info('Peer ' + connection.remoteAddress + ' disconnected.');
-
-        var index = server.clients.indexOf(connection);
-        if (index != -1) {
-            server.clients.splice(index, 1);
-        }
-
+        removeClient('fires', connection);
+        removeClient('crimes', connection);
     });
 });
+
+var removeClient = function(type, connection) {
+    var index = server[type].clients.indexOf(connection);
+    if (index != -1) {
+        server[type].clients.splice(index, 1);
+    }
+}
 
 /*
  * HELPER FUNCTIONS
@@ -83,53 +131,71 @@ wsServer.on('connect', function(connection) {
 // Fetch the latest 25 events.
 // If new events are found (not within server.crimes), push
 // new events to connected clients, and update server.crimes
-var fetchAndPushNewCrimes = function() {
-    request(url, function (err, res, body) {
-        if (!err && res.statusCode == 200) {
-            var fetchedCrimes = JSON.parse(body);
+var fetchAndPush = function(type) {
 
-            logger.info('Refreshing crime data... ' +  
-                'Fetched ' + fetchedCrimes.length + ' recent crimes');
+    var service = server[type];
+
+    request(service.URL, function (err, res, body) {
+        if (!err && res.statusCode == 200) {
+            var fetchedData = JSON.parse(body);
+
+            logger.info('Refreshing ' + type + ' data... ' +  
+                'Fetched ' + fetchedData.length + ' items.');
 
             var hasNew = false;
-            var numNewCrimes = 0;
-            var newCrimes = [];
+            var newCount = 0;
+            var updates = [];
 
-            for (i in fetchedCrimes) {
-                var newCrime = fetchedCrimes[i];
+            for (i in fetchedData) {
+                var newEntry = fetchedData[i];
+
+                if (type === 'crimes') {
+                    sanitizeCrimeEvent(newEntry);
+                }
+
                 var isNew = true;
 
                 // check existing crimes for newCrime
-                for (j in server.crimes) {
-                    if (crimesEqual(server.crimes[j], newCrime)) {
+                for (j in service.data) {
+                    if (objEqual(service.data[j], newEntry)) {
                         isNew = false;
                    }
                 }
 
                 if (isNew) {
                     hasNew = true;
-                    numNewCrimes++;
-                    newCrimes.push(newCrime);
+                    newCount++;
+                    updates.push(newEntry);
                 }
             }
 
             if (hasNew) {
-                logger.info(numNewCrimes + ' new crimes found.');
-                server.newCrimes = newCrimes;
+                logger.info(newCount + ' new ' + type + ' found.');
+                service.latest = updates;
 
                 // remove the last (numNewCrimes) crimes from the array
-                server.crimes.splice(server.crimes.length - numNewCrimes, numNewCrimes);
+                service.data.splice(service.data.length - newCount, newCount);
 
                 // add the newest crimes in chronological order (newest first)
-                for (i in newCrimes) {
-                    server.crimes.splice(i, 0, newCrimes[i]);
+                for (i in updates) {
+                    service.data.splice(i, 0, updates[i]);
                 }
 
                 // send to clients
-                pushUpdates();
+                pushUpdates(type);
             }
         }
     });
+};
+
+var sanitizeCrimeEvent = function(crime) {
+    crime['address'] = crime.hundred_block_location;
+    crime['type'] = crime.event_clearance_description;
+    crime['datetime'] = parseInt(Date.parse(crime.event_clearance_date) / 1000);
+
+    delete crime.hundred_block_location;
+    delete crime.event_clearance_description;
+    delete crime.event_clearance_date;
 };
 
 /**
@@ -138,10 +204,10 @@ var fetchAndPushNewCrimes = function() {
  * @return true iff the non-object fields of crime1 and crime2 
  *         are equivalent (===)
  */
-var crimesEqual = function(crime1, crime2) {
+var objEqual = function(obj1, obj2) {
     var equal = true;
-    for (key in crime1) {
-        if (!crime2.hasOwnProperty(key) || (crime2[key] !== crime1[key] && typeof crime1[key] !== 'object')) {
+    for (key in obj1) {
+        if (!obj2.hasOwnProperty(key) || (obj2[key] !== obj1[key] && typeof obj1[key] !== 'object')) {
             equal = false;
         }
     }
@@ -152,13 +218,17 @@ var crimesEqual = function(crime1, crime2) {
  * Send the latest updates in JSON format, where 'latest' means new
  * crimes since the last refresh interval.
  */
-var pushUpdates = function() {
-    logger.info('Pushing new crimes to clients: ');
-    for (index in server.clients) {
-        var connection = server.clients[index];
-        connection.sendUTF(JSON.stringify({new: server.newCrimes}));
+var pushUpdates = function(type) {
+    logger.info('Pushing new ' + type + ' to clients: ');
+    for (i in server[type].clients) {
+        var connection = server[type].clients[i];
+        connection.sendUTF(JSON.stringify({
+            service: type,
+            new: true,
+            data: server[type].latest
+        }));
     }
-    logger.info('Pushed updates to ' + server.clients.length + ' clients');
+    logger.info('Pushed updates to ' + server[type].clients.length + ' clients');
 }
 
 exports.server = server;

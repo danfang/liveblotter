@@ -6,7 +6,7 @@ html(lang="en")
     body
         #title-bar
             #title
-                h1 Seattle Police Blotter
+                h1 Seattle Live Blotter
 
                 button.btn.btn-default(type="button" data-toggle="modal" data-target="#disclaimer-modal")
                     span#disclaimer.glyphicon.glyphicon-info-sign
@@ -15,6 +15,11 @@ html(lang="en")
         #content-container.row
             #map.col-md-9
             #feed.col-md-3
+
+        #switcher
+            button#crimes.btn.btn-primary.btn-lg(type="button" disabled) CRIMES
+            button#fires.btn.btn-primary.btn-lg(type="button") FIRES
+
         section#credits
             p &copy; Daniel Fang, 2015
             p Made with &#10084; in Seattle

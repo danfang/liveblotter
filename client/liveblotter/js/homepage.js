@@ -3,13 +3,37 @@
 
 var url = "ws://code.danielfang.org/liveblotter/ws/";
 var ws = new WebSocket(url);
-var crimes = [];
-var markers = [];
+
+var services = {
+    crimes: {
+        data: [],
+        markers: [],
+        subscribed: true
+    },
+
+    fires: {
+        data:[], 
+        markers: [],
+        subscribed: false
+    }
+}
+
 var map, mapOptions;
 var now = new Date();
 
 $(document).ready(function() {
 
+    $("#fires").click(function() {
+        $("#fires").prop("disabled", true);
+        $("#crimes").prop("disabled", false);
+        switchService();
+    });
+
+    $("#crimes").click(function() {
+        $("#crimes").prop("disabled", true);
+        $("#fires").prop("disabled", false);
+        switchService();
+    });
     var titleHeight = $("#title-bar").height();
 
     resizeContent($(window).height() - titleHeight);
@@ -28,6 +52,7 @@ $(document).ready(function() {
     // Websocket handlers
 	ws.onopen = function(evt) {
         $("#status").html('status: <span class="connected">connected</span>');
+        ws.send("crimes");
     };
 
 	ws.onclose = function(evt) {
@@ -36,71 +61,111 @@ $(document).ready(function() {
 
     ws.onerror = function(evt) {};
 
+    // Pre: data will be valid JSON and have the following fields:
+    // 'service': string,
+    // 'new': boolean,
+    // 'data': obj
 	ws.onmessage = function(evt) {
-        var data = JSON.parse(evt.data);
+        var response = JSON.parse(evt.data);
         var html = "";
 
-        if (data.hasOwnProperty("existing")) {
-            for (i in data.existing) {
-                var crime = data.existing[i];
-                crimes.push(crime);
-                dropMarker(i);
-                var date = new Date(crime.event_clearance_date);
-                date.setHours(date.getHours() + 8);
-                var ago = (now - date) / (1000 * 60);
-                var agoString;
-                if (ago > 60) {
-                    agoString = '<div class="date">' + parseInt(ago / 60) + ' hours ago' + 
-                        '</div>';
-                } else {
-                    agoString = parseInt(ago) + ' minutes ago';
-                }
-
-                html += '<div class="update hvr-underline-from-left">' + agoString + '<p>' + 
-                    crime.event_clearance_description + '</p></div>';
-            }
-            $("#feed").html(html);
-        } else if (data.hasOwnProperty("new")) {
-            var numNewCrimes = data.new.length;
-            crimes.splice(crimes.length - numNewCrimes, numNewCrimes);
-            var toDrop = markers.splice(crimes.length - numNewCrimes, numNewCrimes);
-
-            for (i in toDrop) {
-                markers[i].setMap(null);
-            }
-
-            for (i in data.new) {
-                var crime = data.new[i];
-                crimes.splice(i, 0, crime);
-
-                dropMarker(i);
-
-                var date = Date.parse(crime.event_clearance_date);
-                var ago = now - date;
-
-                html += '<p>' + ago + 'ago:  ' + 
-                    crime.event_clearance_description + '</p>';
-                $("#feed").last().remove();
-            }
-
-            $("#feed").html(html + $("#feed").html()); 
-        }
-        updateClickEvents();
+        updateService(response.service, response.new, response.data);
+        updateClickEvents(response.service);
     };
 });
 
-function updateClickEvents() {
+function getDateDiv(dateString) {
+    var date = new Date(dateString);
+    var ago = (now - date) / (1000 * 60);
+    var agoString = '<div class="date">';
+    var time;
+    if (ago > 60) {
+        time = parseInt(ago / 60);
+        agoString += parseInt(ago / 60) + ' hour';
+    } else {
+        time = parseInt(ago);
+        agoString += parseInt(ago) + ' minute';
+    }
+    agoString += time == 1 ? ' ago': 's ago';
+    agoString += '</div>';
+    return agoString;
+}
+
+function clearMarkers(type) {
+    var markers = services[type].markers;
+    for (i in markers) {
+        markers[i].setMap(null);
+    }
+}
+
+function switchService() {
+    if (services.crimes.subscribed) {
+        ws.send("fires");
+        clearMarkers("crimes");
+        services.crimes.markers = [];
+    } else {
+        clearMarkers("fires");
+        ws.send("crimes");
+        services.fires.markers = [];
+    }
+    services.crimes.subscribed = !services.crimes.subscribed;
+    services.fires.subscribed = !services.fires.subscribed;
+}
+
+function updateService(type, isNew, data) {
+    var service = services[type];
+    var html = "";
+
+    if (!isNew) {
+        service.data = [];
+
+        for (i in data) {
+            var event = data[i];
+            service.data.push(event);
+            dropMarker(type, event);
+
+            var dateDiv = getDateDiv(event.datetime * 1000);
+            html += '<div class="update hvr-underline-from-left">' + dateDiv + '<p>' + 
+                event.type + '</p></div>';
+        }
+        $("#feed").html(html);
+    } else {
+        var newCount = data.length;
+        service.data.splice(service.data.length - newCount, newCount);
+        var toDrop = service.markers.splice(service.data.length - newCount, newCount);
+
+        for (i in toDrop) {
+            service.markers[i].setMap(null);
+        }
+
+        for (i in data) {
+            var event = data[i];
+            service.splice(i, 0, event);
+
+            dropMarker(type, event);
+            var dateDiv = getDateDiv(event.datetime);
+
+            html += '<div class="update hvr-underline-from-left">' + dateDiv + '<p>' + 
+                event.type + '</p></div>';
+
+            $("#feed").last().remove();
+        }
+        $("#feed").html(html + $("#feed").html()); 
+    }
+}
+
+function updateClickEvents(type) {
     $(".update").click(function(){
         var index = $(".update").index(this);
-        google.maps.event.trigger(markers[index], 'click');
+        google.maps.event.trigger(services[type].markers[index], 'click');
     });
 
    $(".update").hover(function(){
         var index = $(".update").index(this);
-        markers[index].setAnimation(google.maps.Animation.BOUNCE);
+        services[type].markers[index].setAnimation(google.maps.Animation.BOUNCE);
     }, function() {
         var index = $(".update").index(this);
-        markers[index].setAnimation(null);
+        services[type].markers[index].setAnimation(null);
     });
 }
 
@@ -108,31 +173,30 @@ function resizeContent(height) {
     $("#content-container").css("height", height);
 }
 
-function dropMarker(i) {
+function dropMarker(type, event) {
     setTimeout(function() {
-        createMarker(crimes[i]);
+        createMarker(type, event);
     }, i * 75);
 }
 
 var info = null;
 
-function createMarker(crime) {
+function createMarker(type, event) {
     var marker = new google.maps.Marker({
         map:map,
            draggable:false,
            animation: google.maps.Animation.DROP,
            position: new google.maps.LatLng(
-               crime.latitude,
-               crime.longitude
+               event.latitude,
+               event.longitude
            )
     });
-
-    markers.push(marker);
+    services[type].markers.push(marker);
 
     var contentString = '<div class="marker-content">' +
-        '<h1>' + crime.event_clearance_description + '</h1>' +
-        '<h2>Located at: ' + crime.hundred_block_location + '</h2/>' +
-        '<h2>Occurred at: ' + new Date(crime.event_clearance_date) + '</h2>' +
+        '<h1>' + event.type + '</h1>' +
+        '<h2>Located at: ' + event.address + '</h2/>' +
+        '<h2>Occurred at: ' + new Date(event.datetime * 1000) + '</h2>' +
         '</div>'; 
 
     google.maps.event.addListener(marker, 'click', function() {
@@ -153,4 +217,10 @@ function initialize() {
 	};
 	map = new google.maps.Map(document.getElementById('map'),
 		mapOptions);
+
+    google.maps.event.addListener(map, 'click', function() {
+        if (info) {
+            info.close();
+        }
+    });
 }

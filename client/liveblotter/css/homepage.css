@@ -4,6 +4,20 @@ html, body {
     font-family: 'Source Sans Pro', sans-serif;
 }
 
+#switcher {
+    position: absolute;
+    width: 250px;
+    margin: auto;
+    z-index: 1;
+    bottom: 50px;
+    left: 0;
+    right: 0;
+}
+
+#switcher button {
+    width: 90px;
+}
+
 #title {
     float: left;
 }
