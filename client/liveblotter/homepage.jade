@@ -5,10 +5,40 @@ html(lang="en")
         include includes/head
     body
         #title-bar
-            h1 Seattle Live Blotter
+            #title
+                h1 Seattle Police Blotter
+
+                button.btn.btn-default(type="button" data-toggle="modal" data-target="#disclaimer-modal")
+                    span#disclaimer.glyphicon.glyphicon-info-sign
+
+            #status
         #content-container.row
-            #map.col-md-8
-            #feed.col-md-4
+            #map.col-md-9
+            #feed.col-md-3
         section#credits
-            p Created by Daniel Fang &copy; 2015
+            p &copy; Daniel Fang, 2015
+            p Made with &#10084; in Seattle
+            p Built using the Socrata Open Data API
+            .modal.fade#disclaimer-modal(tabindex="-1" role="dialog" aria-labelledby="modal-label" aria-hidden="true")
+                .modal-dialog
+                    .modal-content
+                        .modal-header
+                            button.close(type="button" data-dismiss="modal" aria-label="Close")
+                                span(aria-hidden="true") &times;
+                            h4#modal-label.modal-title City of Seattle Disclaimer 
+                        .modal-body
+                            p.
+                                 The data made available here has been modified for use from its 
+                                 original source, which is the City of Seattle. Neither the City of 
+                                 Seattle nor the Office of the Chief Technology Officer (OCTO) makes 
+                                 any claims as to the completeness, timeliness, accuracy or content 
+                                 of any data contained in this application; makes any representation 
+                                 of any kind, including, but not limited to, warranty of the accuracy 
+                                 or fitness for a particular use; nor are any such warranties to be 
+                                 implied or inferred with respect to the information or data furnished 
+                                 herein. The data is subject to change as modifications and updates 
+                                 are complete. It is understood that the information contained in 
+                                 the web feed is being used at one's own risk.
+                        .modal-footer
+                            button.btn.btn-default(type="button" data-dismiss="modal") Close
     script(src="js/homepage.js")
