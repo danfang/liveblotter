@@ -22,24 +22,26 @@ var server = http.createServer(function(request, response) {
     response.end();
 });
 
-server.crimes = {
-    URL: urlBase + '3k2p-39jp.json?$where=event_clearance_date%20IS%20NOT%20NULL&$order=event_clearance_date%20DESC&$limit=25',
-    isReady: false,
-    clients: [],
-    data: [],
-    latest: []
+var services = {
+    crimes: {
+        URL: urlBase + '3k2p-39jp.json?$where=event_clearance_date%20IS%20NOT%20NULL&$order=event_clearance_date%20DESC&$limit=25',
+        isReady: false,
+        clients: [],
+        data: [],
+        latest: []
+    },
+
+    fires: {
+        URL: urlBase + 'kzjm-xkqj.json?$where=datetime%20IS%20NOT%20NULL&%24order=datetime%20desc&$limit=25',
+        isReady: false,
+        clients: [],
+        data: [],
+        latest: []
+    }
 };
 
-server.fires = {
-    URL: urlBase + 'kzjm-xkqj.json?$where=datetime%20IS%20NOT%20NULL&%24order=datetime%20desc&$limit=25',
-    isReady: false,
-    clients: [],
-    data: [],
-    latest: []
-}
-
 var loadData = function(type) {
-    var service = server[type];
+    var service = services[type];
 
     request(service.URL, function (err, res, body) {
         if (!err && res.statusCode == 200) {
@@ -57,7 +59,7 @@ var loadData = function(type) {
 
             // start polling for new events
             setInterval(function() {
-                if (server[type].isReady) {
+                if (services[type].isReady) {
                     fetchAndPush(type);
                 }
             }, POLL_INTERVAL);
@@ -91,15 +93,19 @@ wsServer.on('connect', function(connection) {
             var message = message.utf8Data;
             logger.info('Received message: ' + message);
 
+            if (message === 'debug') {
+                printDebug();
+            }
+
             if (message === 'crimes' || message === 'fires') {
                 var type = message;
                 connection.sendUTF(JSON.stringify({
                     service: type,
                     new: false,
-                    data: server[type].data
+                    data: services[type].data
                 }));
 
-                server[type].clients.push(connection);
+                services[type].clients.push(connection);
 
                 if (type === 'crimes') {
                     removeClient('fires', connection);
@@ -118,9 +124,9 @@ wsServer.on('connect', function(connection) {
 });
 
 var removeClient = function(type, connection) {
-    var index = server[type].clients.indexOf(connection);
+    var index = services[type].clients.indexOf(connection);
     if (index != -1) {
-        server[type].clients.splice(index, 1);
+        services[type].clients.splice(index, 1);
     }
 }
 
@@ -133,7 +139,7 @@ var removeClient = function(type, connection) {
 // new events to connected clients, and update server.crimes
 var fetchAndPush = function(type) {
 
-    var service = server[type];
+    var service = services[type];
 
     request(service.URL, function (err, res, body) {
         if (!err && res.statusCode == 200) {
@@ -188,10 +194,21 @@ var fetchAndPush = function(type) {
     });
 };
 
+var printDebug = function() {
+    for (i in services) {
+        var data = services[i].data;
+        console.log(i);
+        for (j in data) {
+            var event = data[j];
+            console.log(new Date(event.datetime * 1000));
+        }
+    }
+}
+
 var sanitizeCrimeEvent = function(crime) {
     crime['address'] = crime.hundred_block_location;
     crime['type'] = crime.event_clearance_description;
-    crime['datetime'] = parseInt(Date.parse(crime.event_clearance_date) / 1000);
+    crime['datetime'] = (Date.parse(crime.event_clearance_date) / 1000) + (8 * 3600);
 
     delete crime.hundred_block_location;
     delete crime.event_clearance_description;
@@ -220,15 +237,15 @@ var objEqual = function(obj1, obj2) {
  */
 var pushUpdates = function(type) {
     logger.info('Pushing new ' + type + ' to clients: ');
-    for (i in server[type].clients) {
-        var connection = server[type].clients[i];
+    for (i in services[type].clients) {
+        var connection = services[type].clients[i];
         connection.sendUTF(JSON.stringify({
             service: type,
             new: true,
-            data: server[type].latest
+            data: services[type].latest
         }));
     }
-    logger.info('Pushed updates to ' + server[type].clients.length + ' clients');
+    logger.info('Pushed updates to ' + services[type].clients.length + ' clients');
 }
 
 exports.server = server;

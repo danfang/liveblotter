@@ -26,12 +26,14 @@ $(document).ready(function() {
     $("#fires").click(function() {
         $("#fires").prop("disabled", true);
         $("#crimes").prop("disabled", false);
+        $("#mode").html("FIRE 911 RESPONSE");
         switchService();
     });
 
     $("#crimes").click(function() {
         $("#crimes").prop("disabled", true);
         $("#fires").prop("disabled", false);
+        $("#mode").html("POLICE 911 RESPONSE");
         switchService();
     });
     var titleHeight = $("#title-bar").height();
@@ -44,6 +46,7 @@ $(document).ready(function() {
 
     setInterval(function() {
         now = new Date();
+        refreshHTML();
     }, 1000);
 
     // Google Maps init
@@ -75,9 +78,9 @@ $(document).ready(function() {
 });
 
 function getDateDiv(dateString) {
-    var date = new Date(dateString);
+    var date = new Date(dateString * 1000);
     var ago = (now - date) / (1000 * 60);
-    var agoString = '<div class="date">';
+    var agoString = '';
     var time;
     if (ago > 60) {
         time = parseInt(ago / 60);
@@ -87,7 +90,6 @@ function getDateDiv(dateString) {
         agoString += parseInt(ago) + ' minute';
     }
     agoString += time == 1 ? ' ago': 's ago';
-    agoString += '</div>';
     return agoString;
 }
 
@@ -124,8 +126,9 @@ function updateService(type, isNew, data) {
             service.data.push(event);
             dropMarker(type, event);
 
-            var dateDiv = getDateDiv(event.datetime * 1000);
-            html += '<div class="update hvr-underline-from-left">' + dateDiv + '<p>' + 
+            var dateDiv = getDateDiv(event.datetime);
+            html += '<div class="update hvr-underline-from-left">' +
+               '<div class="date">' + dateDiv + '</div><p>' + 
                 event.type + '</p></div>';
         }
         $("#feed").html(html);
@@ -140,17 +143,29 @@ function updateService(type, isNew, data) {
 
         for (i in data) {
             var event = data[i];
-            service.splice(i, 0, event);
+            service.data.splice(i, 0, event);
 
             dropMarker(type, event);
             var dateDiv = getDateDiv(event.datetime);
 
-            html += '<div class="update hvr-underline-from-left">' + dateDiv + '<p>' + 
+            html += '<div class="update hvr-underline-from-left"><div class="date">' + dateDiv + '</div><p>' + 
                 event.type + '</p></div>';
 
             $("#feed").last().remove();
         }
         $("#feed").html(html + $("#feed").html()); 
+    }
+}
+
+function refreshHTML() {
+    for (i in services) {
+        if (services[i].subscribed) {
+            $(".update .date").each(function(index) {
+                var event = services[i].data[index];
+                var dateDiv = getDateDiv(event.datetime);
+                $(this).html(dateDiv);
+            });
+        }
     }
 }
 
@@ -192,11 +207,13 @@ function createMarker(type, event) {
            )
     });
     services[type].markers.push(marker);
+    var date = new Date(event.datetime * 1000);
+    date = date.toLocaleString();
 
     var contentString = '<div class="marker-content">' +
         '<h1>' + event.type + '</h1>' +
-        '<h2>Located at: ' + event.address + '</h2/>' +
-        '<h2>Occurred at: ' + new Date(event.datetime * 1000) + '</h2>' +
+        '<h2>@ ' + event.address + '</h2/>' +
+        '<h2>' + date + '</h2>' +
         '</div>'; 
 
     google.maps.event.addListener(marker, 'click', function() {

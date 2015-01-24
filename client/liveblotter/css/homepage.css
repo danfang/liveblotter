@@ -4,9 +4,24 @@ html, body {
     font-family: 'Source Sans Pro', sans-serif;
 }
 
+#mode {
+    margin-left: 20px;
+    display: inline-block;
+    cursor: default;
+    color: white;
+    background-color: #e74c3c;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: 300;
+    letter-spacing: 1px;
+    font-size: 16px;
+    position: absolute;
+    bottom: 21px;
+}
+
 #switcher {
     position: absolute;
-    width: 250px;
+    width: 335px;
     margin: auto;
     z-index: 1;
     bottom: 50px;
@@ -15,7 +30,7 @@ html, body {
 }
 
 #switcher button {
-    width: 90px;
+    width: 150px;
 }
 
 #title {
@@ -31,6 +46,7 @@ html, body {
 }
 
 #status {
+    cursor: default;
     position: absolute;
     font-size: 14px;
     bottom: 25px;
@@ -50,6 +66,11 @@ html, body {
     cursor: pointer;
     padding: 2px 10px;
     margin-bottom: 3px;
+    border-bottom: 1px solid #DDD;
+}
+
+#map-container {
+    height: 100%;
 }
 
 .update:hover {
@@ -72,14 +93,15 @@ html, body {
 }
 
 .marker-content h1 {
-    font-size: 18px;
+    font-size: 16px;
 }
 
 .marker-content h2 {
-    font-size: 14px;
+    font-size: 12px;
 }
 
 #title-bar {
+    cursor: default;
     width: 100%;
     height: 80px;
     font-size: 30px;
@@ -122,6 +144,16 @@ html, body {
     position: relative;
     overflow: hidden;
     width: 90%;
+}
+
+#disclaimer-button {
+    position: absolute;
+    bottom: -90px;
+    right: 100px;
+}
+
+#disclaimer {
+    margin-right: 8px;
 }
 
 .hvr-underline-from-left:before {
