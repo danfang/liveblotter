@@ -116,21 +116,23 @@ function switchService() {
 
 function updateService(type, isNew, data) {
     var service = services[type];
-    var html = "";
 
     if (!isNew) {
         service.data = [];
 
+        var html = "";
+
         for (i in data) {
             var event = data[i];
             service.data.push(event);
-            dropMarker(type, event);
+            dropMarker(type, event, i);
 
             var dateDiv = getDateDiv(event.datetime);
             html += '<div class="update hvr-underline-from-left">' +
                '<div class="date">' + dateDiv + '</div><p>' + 
                 event.type + '</p></div>';
         }
+
         $("#feed").html(html);
     } else {
         var newCount = data.length;
@@ -141,19 +143,19 @@ function updateService(type, isNew, data) {
             service.markers[i].setMap(null);
         }
 
-        for (i in data) {
+        for (var i = data.length - 1; i >= 0; i--) {
             var event = data[i];
-            service.data.splice(i, 0, event);
+            service.data.splice(0, 0, event);
 
-            dropMarker(type, event);
+            dropMarker(type, event, 0);
             var dateDiv = getDateDiv(event.datetime);
 
-            html += '<div class="update hvr-underline-from-left"><div class="date">' + dateDiv + '</div><p>' + 
+            var html = '<div class="update hvr-underline-from-left"><div class="date">' + dateDiv + '</div><p>' + 
                 event.type + '</p></div>';
 
-            $("#feed").last().remove();
+            $(".update").last().remove();
+            $("#feed").prepend(html); 
         }
-        $("#feed").html(html + $("#feed").html()); 
     }
 }
 
@@ -188,10 +190,10 @@ function resizeContent(height) {
     $("#content-container").css("height", height);
 }
 
-function dropMarker(type, event) {
+function dropMarker(type, event, index) {
     setTimeout(function() {
         createMarker(type, event);
-    }, i * 75);
+    }, index * 75);
 }
 
 var info = null;

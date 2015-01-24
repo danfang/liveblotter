@@ -4,6 +4,11 @@ html, body {
     font-family: 'Source Sans Pro', sans-serif;
 }
 
+.date {
+    font-size: 12px;
+    color: #333;
+}
+
 #mode {
     margin-left: 20px;
     display: inline-block;
