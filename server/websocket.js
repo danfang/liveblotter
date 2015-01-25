@@ -3,8 +3,6 @@ var winston = require('winston');
 var request = require('request');
 var WebSocketServer = require('websocket').server;
 
-var POLL_INTERVAL = 60 * 1000;
-
 var urlBase = 'https://data.seattle.gov/resource/';
 
 // Logging utilities to console and log files
@@ -25,6 +23,7 @@ var server = http.createServer(function(request, response) {
 var services = {
     crimes: {
         URL: urlBase + '3k2p-39jp.json?$where=event_clearance_date%20IS%20NOT%20NULL&$order=event_clearance_date%20DESC&$limit=25',
+        POLL_INTERVAL: 10 * 60 * 1000, // 10 mins
         isReady: false,
         clients: [],
         data: [],
@@ -33,6 +32,7 @@ var services = {
 
     fires: {
         URL: urlBase + 'kzjm-xkqj.json?$where=datetime%20IS%20NOT%20NULL&%24order=datetime%20desc&$limit=25',
+        POLL_INTERVAL: 30 * 1000, // 30 secs
         isReady: false,
         clients: [],
         data: [],
@@ -48,6 +48,7 @@ var loadData = function(type) {
             var data = JSON.parse(body);
             service.isReady = true;
             logger.info(type + ': updated and ready');
+            logger.info(type + ' updates set to refresh every ' + service.POLL_INTERVAL / 1000 / 60 + ' mins');
 
             if (type === 'crimes') {
                 for (i in data) {
@@ -62,7 +63,7 @@ var loadData = function(type) {
                 if (services[type].isReady) {
                     fetchAndPush(type);
                 }
-            }, POLL_INTERVAL);
+            }, service.POLL_INTERVAL);
         }
     });
 }
@@ -70,7 +71,6 @@ var loadData = function(type) {
 server.start = function(port, debug) {
     server.listen(port, function() {
         logger.info('Websocket server is listening on port ' + port);
-        logger.info('Updates set to refresh every ' + POLL_INTERVAL / 1000 + ' secs');
 
         loadData('fires');
         loadData('crimes');

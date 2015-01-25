@@ -81,15 +81,16 @@ function getDateDiv(dateString) {
     var date = new Date(dateString * 1000);
     var ago = (now - date) / (1000 * 60);
     var agoString = '';
-    var time;
     if (ago > 60) {
-        time = parseInt(ago / 60);
-        agoString += parseInt(ago / 60) + ' hour';
+        var hours = parseInt(ago / 60);
+        agoString += hours + 'h ';
+        var minutes = parseInt(ago % 60);
+        agoString += minutes + 'm ';
     } else {
-        time = parseInt(ago);
-        agoString += parseInt(ago) + ' minute';
+        var minutes = parseInt(ago);
+        agoString += minutes + 'm ';
     }
-    agoString += time == 1 ? ' ago': 's ago';
+    agoString += 'ago';
     return agoString;
 }
 
@@ -125,7 +126,7 @@ function updateService(type, isNew, data) {
         for (i in data) {
             var event = data[i];
             service.data.push(event);
-            dropMarker(type, event, i);
+            dropMarker(type, event, i, false);
 
             var dateDiv = getDateDiv(event.datetime);
             html += '<div class="update hvr-underline-from-left">' +
@@ -140,14 +141,14 @@ function updateService(type, isNew, data) {
         var toDrop = service.markers.splice(service.data.length - newCount, newCount);
 
         for (i in toDrop) {
-            service.markers[i].setMap(null);
+            toDrop[i].setMap(null);
         }
 
         for (var i = data.length - 1; i >= 0; i--) {
             var event = data[i];
             service.data.splice(0, 0, event);
 
-            dropMarker(type, event, 0);
+            dropMarker(type, event, 0, true);
             var dateDiv = getDateDiv(event.datetime);
 
             var html = '<div class="update hvr-underline-from-left"><div class="date">' + dateDiv + '</div><p>' + 
@@ -190,15 +191,15 @@ function resizeContent(height) {
     $("#content-container").css("height", height);
 }
 
-function dropMarker(type, event, index) {
+function dropMarker(type, event, index, isNew) {
     setTimeout(function() {
-        createMarker(type, event);
+        createMarker(type, event, isNew);
     }, index * 75);
 }
 
 var info = null;
 
-function createMarker(type, event) {
+function createMarker(type, event, isNew) {
     var marker = new google.maps.Marker({
         map:map,
            draggable:false,
@@ -208,7 +209,13 @@ function createMarker(type, event) {
                event.longitude
            )
     });
-    services[type].markers.push(marker);
+
+    if (isNew) {
+        console.log('Adding marker to beginning');
+        services[type].markers.splice(0, 0, marker);
+    } else {
+        services[type].markers.push(marker);
+    }
     var date = new Date(event.datetime * 1000);
     date = date.toLocaleString();
 

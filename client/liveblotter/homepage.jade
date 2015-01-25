@@ -6,16 +6,16 @@ html(lang="en")
     body
         #title-bar
             #title
-                h1 Seattle Live Blotter
+                h1.hidden-xs Seattle Live Blotter
                 #mode POLICE 911 RESPONSE
             #status
         #content-container.row
-            #map-container.col-md-9
+            #map-container.col-xs-9.col-sm-9.col-md-9.col-lg-9
                 #map
                 #switcher
                     button#crimes.btn.btn-default.btn-lg(type="button" disabled) Police Dept.
                     button#fires.btn.btn-default.btn-lg(type="button") Fire Dept. 
-            #feed.col-md-3
+            #feed.col-xs-3.col-sm-3.col-md-3.col-lg-3
 
           section#credits
             p &copy; 
