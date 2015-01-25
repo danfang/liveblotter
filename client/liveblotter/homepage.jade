@@ -4,6 +4,18 @@ html(lang="en")
     head
         include includes/head
     body
+
+        #fb-root
+
+        script.
+            (function(d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) return;
+            js = d.createElement(s); js.id = id;
+            js.src = "//connect.facebook.net/en_US/sdk.js#xfbml=1&appId=233525283515263&version=v2.0";
+            fjs.parentNode.insertBefore(js, fjs);
+            }(document, 'script', 'facebook-jssdk'));
+
         #title-bar
             #title
                 h1.hidden-xs Seattle Live Blotter
@@ -18,6 +30,7 @@ html(lang="en")
             #feed.col-xs-3.col-sm-3.col-md-3.col-lg-3
 
           section#credits
+            p: .fb-share-button(data-href="http://code.danielfang.org/liveblotter/" data-layout="button_count")
             p &copy; 
                 a(target="_blank" href="http://www.danielfang.org") Daniel Fang
                 | , 2015
@@ -51,3 +64,4 @@ html(lang="en")
                         .modal-footer
                             button.btn.btn-default(type="button" data-dismiss="modal") Close
     script(src="js/homepage.js")
+
