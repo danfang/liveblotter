@@ -30,16 +30,18 @@ html(lang="en")
             #feed.col-xs-12.col-sm-3.col-md-3.col-lg-3
 
           section#credits
-            p: .fb-share-button(data-href="http://code.danielfang.org/liveblotter/" data-layout="button_count")
+            p 
+                .fb-share-button(data-href="http://code.danielfang.org/liveblotter/" data-layout="button_count")
+                button#disclaimer-button.btn.btn-default.btn-xs(type="button" data-toggle="modal" data-target="#disclaimer-modal")
+                    span#disclaimer.glyphicon.glyphicon-info-sign
+                    | Disclaimer
+
+
             p &copy; 
                 a(target="_blank" href="http://www.danielfang.org") Daniel Fang
                 | , 2015
             p Made with &#10084; in Seattle
             p Built using the Socrata Open Data API
-
-            button#disclaimer-button.btn.btn-default(type="button" data-toggle="modal" data-target="#disclaimer-modal")
-                span#disclaimer.glyphicon.glyphicon-info-sign
-                | Disclaimer
 
             .modal.fade#disclaimer-modal(tabindex="-1" role="dialog" aria-labelledby="modal-label" aria-hidden="true")
                 .modal-dialog

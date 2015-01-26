@@ -102,6 +102,12 @@ html, body {
     overflow: scroll;
 }
 
+@media screen and (max-width: 768px) {
+    #feed {
+        margin-bottom: 25px;
+    }
+}
+
 .marker-content {
     text-align: center;
     padding-left: 10px;
@@ -159,12 +165,6 @@ html, body {
     position: relative;
     overflow: hidden;
     width: 90%;
-}
-
-#disclaimer-button {
-    position: absolute;
-    bottom: -90px;
-    right: 100px;
 }
 
 #disclaimer {
