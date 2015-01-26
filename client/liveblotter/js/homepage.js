@@ -188,6 +188,10 @@ function updateClickEvents(type) {
 }
 
 function resizeContent(height) {
+    if ($(window).width() < 768) {
+        height = height *  2 / 3;
+    }
+
     $("#content-container").css("height", height);
 }
 

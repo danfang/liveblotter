@@ -20,14 +20,14 @@ html(lang="en")
             #title
                 h1.hidden-xs Seattle Live Blotter
                 #mode POLICE 911 RESPONSE
-            #status
+            #status.hidden-xs
         #content-container.row
-            #map-container.col-xs-9.col-sm-9.col-md-9.col-lg-9
+            #map-container.col-xs-12.col-sm-9.col-md-9.col-lg-9
                 #map
                 #switcher
                     button#crimes.btn.btn-default.btn-lg(type="button" disabled) Police Dept.
                     button#fires.btn.btn-default.btn-lg(type="button") Fire Dept. 
-            #feed.col-xs-3.col-sm-3.col-md-3.col-lg-3
+            #feed.col-xs-12.col-sm-3.col-md-3.col-lg-3
 
           section#credits
             p: .fb-share-button(data-href="http://code.danielfang.org/liveblotter/" data-layout="button_count")
